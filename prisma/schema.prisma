@@ -1,0 +1,569 @@
+// ============================================================
+// PrintCare Commerce SaaS — Multi-Tenant Database Schema
+// ============================================================
+// Design principle: every business-data table carries a
+// `tenantId` foreign key. PrintCare is simply the first row
+// in the `Tenant` table — there is no special-casing anywhere
+// else in the schema. New tenants (ABC Electronics, Office
+// World, etc.) plug in immediately with zero migrations.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────
+// TENANTS
+// ─────────────────────────────────────────────────────────
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String                          // "PrintCare"
+  slug      String   @unique                // "printcare" -> printcare.yourplatform.com
+  logoUrl   String?
+  phone     String?
+  email     String?
+
+  // Subscription / billing
+  plan      SubscriptionPlan @default(STARTER)
+  planStatus TenantPlanStatus @default(ACTIVE)
+  customDomain String? @unique              // e.g. "printcare.co.ke" (Enterprise)
+  trialEndsAt  DateTime?
+
+  // Branding (Enterprise theming)
+  primaryColor String?
+  themeName    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users        User[]
+  categories   Category[]
+  products     Product[]
+  orders       Order[]
+  customers    Customer[]
+  offers       Offer[]
+  popups       Popup[]
+  banners      Banner[]
+  blogPosts    BlogPost[]
+  subscriptionEvents SubscriptionEvent[]
+
+  @@index([slug])
+}
+
+enum SubscriptionPlan {
+  STARTER
+  BUSINESS
+  ENTERPRISE
+}
+
+enum TenantPlanStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+// Billing history — separate table so plan changes/payments are auditable
+model SubscriptionEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  plan      SubscriptionPlan
+  amount    Decimal  @db.Decimal(12, 2)
+  status    String   // "paid", "failed", "pending"
+  reference String?  // M-Pesa/Pesapal/Flutterwave transaction ref
+  periodStart DateTime
+  periodEnd   DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// ─────────────────────────────────────────────────────────
+// USERS (staff / admins) — separate from storefront Customers
+// ─────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name      String
+  email     String
+  password  String   // hashed (bcrypt) — used by Auth.js credentials provider
+  role      UserRole @default(STAFF)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, email])  // same email can exist across different tenants
+  @@index([tenantId])
+}
+
+enum UserRole {
+  SUPER_ADMIN   // platform owner — not tied to a single tenant in practice
+  ADMIN         // tenant owner
+  STAFF         // tenant employee
+}
+
+// ─────────────────────────────────────────────────────────
+// CATEGORIES (supports nesting: Printers -> Laser Printers)
+// ─────────────────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name      String
+  slug      String
+  imageUrl  String?
+
+  parentId  String?
+  parent    Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryToSubcategory")
+
+  products  Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([parentId])
+}
+
+// ─────────────────────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────────────────────
+
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  name        String
+  slug        String
+  description String?  @db.Text
+
+  price       Decimal  @db.Decimal(12, 2)
+  salePrice   Decimal? @db.Decimal(12, 2)   // shown as "discount price"
+
+  brand       String?
+  sku         String?
+
+  stock       Int      @default(0)
+  featured    Boolean  @default(false)
+  status      ProductStatus @default(ACTIVE)
+
+  // Specifications as flexible key/value (e.g. {"Print Speed": "38 ppm"})
+  specs       Json?
+
+  images      ProductImage[]
+  orderItems  OrderItem[]
+  wishlistedBy WishlistItem[]
+  reviews     Review[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([tenantId, featured])
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  OUT_OF_STOCK
+  ARCHIVED
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url       String
+  position  Int     @default(0)
+
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────
+// CUSTOMERS (storefront accounts — distinct from staff Users)
+// ─────────────────────────────────────────────────────────
+
+model Customer {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name      String
+  email     String?
+  phone     String?
+  password  String?  // optional — guest checkout supported
+
+  addresses Address[]
+  orders    Order[]
+  wishlist  WishlistItem[]
+  reviews   Review[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  label      String?  // "Home", "Office"
+  fullName   String
+  phone      String
+  county     String?
+  town       String?
+  street     String?
+  isDefault  Boolean  @default(false)
+
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────
+// WISHLIST
+// ─────────────────────────────────────────────────────────
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  tenantId   String
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([tenantId])
+}
+
+// ─────────────────────────────────────────────────────────
+// REVIEWS
+// ─────────────────────────────────────────────────────────
+
+model Review {
+  id         String   @id @default(cuid())
+  tenantId   String
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  rating     Int      // 1-5
+  comment    String?  @db.Text
+
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────
+// ORDERS
+// ─────────────────────────────────────────────────────────
+
+model Order {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  // Guest checkout fallback details
+  guestName   String?
+  guestPhone  String?
+  guestEmail  String?
+
+  status      OrderStatus @default(PENDING)
+  channel     OrderChannel @default(WEBSITE)  // WEBSITE vs WHATSAPP order
+
+  subtotal    Decimal  @db.Decimal(12, 2)
+  discount    Decimal  @db.Decimal(12, 2) @default(0)
+  total       Decimal  @db.Decimal(12, 2)
+
+  // Shipping snapshot (don't rely on Address staying unchanged)
+  shippingName  String?
+  shippingPhone String?
+  shippingCounty String?
+  shippingTown   String?
+  shippingStreet String?
+
+  items       OrderItem[]
+  payments    Payment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([customerId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderChannel {
+  WEBSITE
+  WHATSAPP
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  // Snapshot fields so historical orders stay accurate even if product changes
+  productName String
+  unitPrice   Decimal @db.Decimal(12, 2)
+  quantity    Int
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────────────────────
+
+model Payment {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  method    PaymentMethod
+  amount    Decimal  @db.Decimal(12, 2)
+  status    PaymentStatus @default(PENDING)
+
+  // Provider references
+  provider       String?  // "mpesa", "pesapal", "flutterwave"
+  providerRef    String?  // CheckoutRequestID / transaction ref
+  mpesaReceipt   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([providerRef])
+}
+
+enum PaymentMethod {
+  MPESA
+  CARD
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ─────────────────────────────────────────────────────────
+// OFFERS / PROMOTIONS
+// ─────────────────────────────────────────────────────────
+
+model Offer {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title       String          // "20% Off HP Printers"
+  description String?
+  imageUrl    String?
+
+  discountType  DiscountType @default(PERCENTAGE)
+  discountValue Decimal      @db.Decimal(12, 2)
+
+  // Optional: scope to a category or specific products via code-level filtering
+  categoryId  String?
+
+  startDate   DateTime?
+  endDate     DateTime?
+  active      Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, active])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+// ─────────────────────────────────────────────────────────
+// COUPONS (discount codes — separate from automatic Offers)
+// ─────────────────────────────────────────────────────────
+
+model Coupon {
+  id            String   @id @default(cuid())
+  tenantId      String
+
+  code          String   // "SAVE10"
+  discountType  DiscountType @default(PERCENTAGE)
+  discountValue Decimal  @db.Decimal(12, 2)
+
+  maxUses       Int?
+  usedCount     Int      @default(0)
+
+  startDate     DateTime?
+  endDate       DateTime?
+  active        Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+// ─────────────────────────────────────────────────────────
+// POPUPS
+// ─────────────────────────────────────────────────────────
+
+model Popup {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  type        PopupType
+  title       String?
+  message     String?
+  imageUrl    String?
+  buttonText  String?
+  buttonLink  String?
+
+  enabled     Boolean  @default(false)
+  startDate   DateTime?
+  endDate     DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, enabled])
+}
+
+enum PopupType {
+  WELCOME
+  DISCOUNT
+  NEW_ARRIVALS
+  NEWSLETTER
+  ANNOUNCEMENT
+}
+
+// ─────────────────────────────────────────────────────────
+// BANNERS
+// ─────────────────────────────────────────────────────────
+
+model Banner {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title       String?
+  imageUrl    String
+  linkUrl     String?
+  placement   BannerPlacement @default(HOMEPAGE_HERO)
+  position    Int      @default(0)
+  active      Boolean  @default(true)
+
+  startDate   DateTime?
+  endDate     DateTime?
+
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, placement, active])
+}
+
+enum BannerPlacement {
+  HOMEPAGE_HERO
+  HOMEPAGE_PROMO
+  CATEGORY_TOP
+}
+
+// ─────────────────────────────────────────────────────────
+// BLOG (SEO)
+// ─────────────────────────────────────────────────────────
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  title       String
+  slug        String
+  excerpt     String?
+  content     String   @db.Text
+  coverImage  String?
+
+  metaTitle       String?
+  metaDescription String?
+
+  published   Boolean  @default(false)
+  publishedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, published])
+}
+
+// ─────────────────────────────────────────────────────────
+// NEWSLETTER SUBSCRIBERS
+// ─────────────────────────────────────────────────────────
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  tenantId  String
+
+  email     String
+
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
