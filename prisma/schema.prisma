@@ -28,12 +28,26 @@ model Tenant {
   logoUrl   String?
   phone     String?
   email     String?
+  tagline              String?
+  description          String?   @db.Text
+  whatsappPhone        String?
+  address              String?
 
   // Subscription / billing
   plan      SubscriptionPlan @default(STARTER)
   planStatus TenantPlanStatus @default(ACTIVE)
   customDomain String? @unique              // e.g. "printcare.co.ke" (Enterprise)
   trialEndsAt  DateTime?
+
+  // M-Pesa Daraja credentials — per tenant, since each business has
+  // its own till/paybill number. Stored encrypted at rest is ideal;
+  // for sandbox/dev these are plain strings via Prisma.
+  mpesaEnabled       Boolean @default(false)
+  mpesaShortcode     String?   // Till Number or Paybill Number
+  mpesaConsumerKey   String?
+  mpesaConsumerSecret String?
+  mpesaPasskey       String?   // Lipa Na M-Pesa Online passkey
+  mpesaEnvironment   String  @default("sandbox") // "sandbox" | "production"
 
   // Branding (Enterprise theming)
   primaryColor String?
@@ -340,6 +354,7 @@ enum OrderStatus {
 enum OrderChannel {
   WEBSITE
   WHATSAPP
+  IN_STORE
 }
 
 model OrderItem {

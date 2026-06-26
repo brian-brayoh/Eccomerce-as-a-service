@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentTenantOrThrow } from "@/lib/session";
+import { getCurrentCustomer } from "@/lib/customer-session";
+import { getCart } from "@/lib/cart";
 import StorefrontHeader from "@/components/StorefrontHeader";
 import StorefrontFooter from "@/components/StorefrontFooter";
 import ProductCard from "@/components/ProductCard";
@@ -28,6 +30,9 @@ export default async function ProductsPage({
     ? allCategories.find((c) => c.slug === searchParams.category)
     : null;
 
+  const customer = await getCurrentCustomer();
+  const cartCount = getCart(tenant.id).reduce((s, i) => s + i.quantity, 0);
+
   // If a parent category is selected, include products from its children too
   const categoryIds = activeCategory
     ? [activeCategory.id, ...allCategories.filter((c) => c.parentId === activeCategory.id).map((c) => c.id)]
@@ -48,7 +53,7 @@ export default async function ProductsPage({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <StorefrontHeader tenantName={tenant.name} categories={allCategories} />
+      <StorefrontHeader tenantName={tenant.name} categories={allCategories} isCustomerLoggedIn={!!customer} cartCount={cartCount} />
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex-1">
         <div className="flex flex-col sm:flex-row gap-6">

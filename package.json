@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -16,25 +17,27 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "^18",
-    "react-dom": "^18",
-    "@prisma/client": "^5.20.0",
-    "bcryptjs": "^2.4.3",
-    "next-auth": "5.0.0-beta.21",
     "@auth/prisma-adapter": "^2.7.2",
-    "@vercel/blob": "^0.27.0"
+    "@prisma/client": "^5.20.0",
+    "@vercel/blob": "^0.27.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6",
+    "next": "14.2.5",
+    "next-auth": "5.0.0-beta.21",
+    "react": "^18",
+    "react-dom": "^18"
   },
   "devDependencies": {
-    "prisma": "^5.20.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5",
+    "@netlify/plugin-nextjs": "^5.15.12",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/bcryptjs": "^2.4.6",
-    "tailwindcss": "^3.4.1",
+    "autoprefixer": "^10",
     "postcss": "^8",
-    "autoprefixer": "^10"
+    "prisma": "^5.20.0",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
   }
 }

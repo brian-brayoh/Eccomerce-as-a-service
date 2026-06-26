@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentTenantOrThrow } from "@/lib/session";
+import { getCurrentCustomer } from "@/lib/customer-session";
+import { getCart } from "@/lib/cart";
 import StorefrontHeader from "@/components/StorefrontHeader";
 import StorefrontFooter from "@/components/StorefrontFooter";
 import ProductCard from "@/components/ProductCard";
+import WishlistButton from "@/components/WishlistButton";
+import AddToCartButton from "@/components/AddToCartButton";
+import StarRating from "@/components/StarRating";
+import ReviewSection from "@/components/ReviewSection";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -34,6 +40,26 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
   if (!product || product.status === "ARCHIVED") notFound();
 
+  const customer = await getCurrentCustomer();
+  const cartCount = getCart(tenant.id).reduce((s, i) => s + i.quantity, 0);
+
+  const [isWishlisted, reviews] = await Promise.all([
+    customer
+      ? prisma.wishlistItem.findUnique({
+          where: { customerId_productId: { customerId: customer.id, productId: product.id } },
+        }).then(Boolean)
+      : Promise.resolve(false),
+    prisma.review.findMany({
+      where: { productId: product.id },
+      include: { customer: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const averageRating = reviews.length
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+    : 0;
+
   // Related products: same category, excluding this product
   const related = product.categoryId
     ? await prisma.product.findMany({
@@ -61,7 +87,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
 
   return (
     <div className="flex min-h-screen flex-col">
-      <StorefrontHeader tenantName={tenant.name} categories={allCategories} />
+      <StorefrontHeader tenantName={tenant.name} categories={allCategories} isCustomerLoggedIn={!!customer} cartCount={cartCount} />
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex-1">
         {/* Breadcrumb */}
@@ -112,7 +138,16 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
             {product.brand && (
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">{product.brand}</p>
             )}
-            <h1 className="text-2xl font-semibold text-gray-900 mb-3">{product.name}</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">{product.name}</h1>
+
+            {reviews.length > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <StarRating rating={averageRating} size="sm" />
+                <span className="text-sm text-gray-500">
+                  {averageRating.toFixed(1)} ({reviews.length} review{reviews.length !== 1 ? "s" : ""})
+                </span>
+              </div>
+            )}
 
             <div className="flex items-baseline gap-3 mb-4">
               {salePrice ? (
@@ -141,6 +176,11 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
               <p className="text-sm text-gray-600 leading-relaxed mb-6">{product.description}</p>
             )}
 
+            <div className="mb-4">
+              <AddToCartButton productId={product.id} stock={product.stock} />
+            </div>
+
+            <div className="flex items-center gap-3 mb-2">
             <a
               href={`https://wa.me/${whatsappPhone}?text=${whatsappMessage}`}
               target="_blank"
@@ -153,6 +193,8 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
               </svg>
               Order via WhatsApp
             </a>
+            <WishlistButton productId={product.id} initialWishlisted={isWishlisted} isLoggedIn={!!customer} />
+            </div>
 
             {/* Specifications */}
             {specs && Object.keys(specs).length > 0 && (
@@ -170,6 +212,22 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
             )}
           </div>
         </div>
+
+        {/* Reviews */}
+        <ReviewSection
+          productId={product.id}
+          reviews={reviews.map((r) => ({
+            id: r.id,
+            rating: r.rating,
+            comment: r.comment,
+            createdAt: r.createdAt.toISOString(),
+            customer: { name: r.customer.name },
+            isOwn: customer?.id === r.customerId,
+          }))}
+          isLoggedIn={!!customer}
+          averageRating={averageRating}
+          totalReviews={reviews.length}
+        />
 
         {/* Related products */}
         {related.length > 0 && (

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import StarRating from "@/components/StarRating";
+import QuickViewButton from "@/components/QuickViewButton";
 
 function fmt(n: number) {
   return "KES " + n.toLocaleString("en-KE");
@@ -12,6 +14,10 @@ type ProductCardData = {
   brand: string | null;
   imageUrl: string | null;
   stock: number;
+  averageRating?: number;
+  reviewCount?: number;
+  description?: string | null;
+  id?: string;
 };
 
 export default function ProductCard({ product }: { product: ProductCardData }) {
@@ -44,6 +50,15 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
             Out of stock
           </span>
         )}
+        {product.id && (
+          <QuickViewButton product={{
+            id: product.id, slug: product.slug, name: product.name,
+            brand: product.brand, price: product.price, salePrice: product.salePrice,
+            stock: product.stock, description: product.description ?? null,
+            imageUrl: product.imageUrl, averageRating: product.averageRating,
+            reviewCount: product.reviewCount,
+          }} />
+        )}
       </div>
 
       {product.brand && (
@@ -52,6 +67,13 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
       <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1.5 group-hover:text-brand-600">
         {product.name}
       </h3>
+
+      {product.averageRating !== undefined && product.reviewCount !== undefined && product.reviewCount > 0 && (
+        <div className="flex items-center gap-1 mb-1.5">
+          <StarRating rating={product.averageRating} size="sm" />
+          <span className="text-xs text-gray-400">({product.reviewCount})</span>
+        </div>
+      )}
 
       <div className="flex items-baseline gap-2">
         {product.salePrice ? (

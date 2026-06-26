@@ -1,6 +1,7 @@
 import { requireTenantSession } from "@/lib/session";
 import PasswordForm from "./PasswordForm";
 import EmailForm from "./EmailForm";
+import Link from "next/link";
 
 export default async function SettingsPage() {
   const { session } = await requireTenantSession();
@@ -29,6 +30,14 @@ export default async function SettingsPage() {
           <p className="text-xs text-gray-400 mb-4">Use at least 8 characters.</p>
           <PasswordForm />
         </div>
+
+        <Link href="/dashboard/settings/mpesa" className="card flex items-center justify-between hover:border-brand-200 transition">
+          <div>
+            <h2 className="text-sm font-medium text-gray-900">M-Pesa payments</h2>
+            <p className="text-xs text-gray-400">Set up STK Push so customers can pay online</p>
+          </div>
+          <span className="text-brand-500">→</span>
+        </Link>
       </div>
     </div>
   );
