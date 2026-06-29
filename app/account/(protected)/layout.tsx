@@ -36,8 +36,8 @@ if (!customer && !pathname.includes("/login")) {
         <div className="flex flex-col sm:flex-row gap-6">
           <aside className="sm:w-48 flex-shrink-0">
             <div className="mb-4">
-              <p className="text-sm font-medium text-gray-900">{customer.name}</p>
-              <p className="text-xs text-gray-400">{customer.email}</p>
+              <p className="text-sm font-medium text-gray-900">{customer?.name}</p>
+              <p className="text-xs text-gray-400">{customer?.email}</p>
             </div>
             <AccountNav />
           </aside>

@@ -79,7 +79,18 @@ export default function PopupCard({ popup }: { popup: PopupData }) {
 
       {editing && (
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <PopupForm initial={popup} />
+          <PopupForm 
+            initial={{
+              ...popup,
+              title: popup.title ?? undefined,
+              message: popup.message ?? undefined,
+              buttonText: popup.buttonText ?? undefined,
+              buttonLink: popup.buttonLink ?? undefined,
+              imageUrl: popup.imageUrl ?? undefined,
+              startDate: popup.startDate ?? undefined,
+              endDate: popup.endDate ?? undefined,
+            }} 
+          />
         </div>
       )}
     </div>

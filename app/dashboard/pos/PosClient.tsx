@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { searchProducts, placePosOrder } from "./actions";
 
 type Product = {
@@ -252,7 +252,6 @@ export default function PosClient({ mpesaEnabled }: { mpesaEnabled: boolean }) {
             <input type="tel" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} placeholder="M-Pesa phone (07XX…)" className="text-xs" />
           )}
 
-          {/* Status messages */}
           {message && (
             <div className={`rounded-lg px-3 py-2 text-xs ${
               phase === "success" ? "bg-brand-50 text-brand-700" :
@@ -268,7 +267,7 @@ export default function PosClient({ mpesaEnabled }: { mpesaEnabled: boolean }) {
           {(phase === "idle" || phase === "error") && (
             <button
               onClick={handlePlaceOrder}
-              disabled={cart.length === 0 || phase === "placing"}
+              disabled={cart.length === 0}
               className="btn-primary w-full justify-center py-2.5"
             >
               {paymentMethod === "MPESA" ? "📱 Charge via M-Pesa" : "💵 Collect Cash & Complete"}

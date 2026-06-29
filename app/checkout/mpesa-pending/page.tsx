@@ -35,7 +35,7 @@ export default async function MpesaPendingPage({
       <div className="mx-auto max-w-md px-4 sm:px-6 py-16 flex-1 w-full">
         <MpesaPendingClient
           orderId={order.id}
-          phone={searchParams.phone ?? order.shippingPhone}
+          phone={searchParams.phone ?? order.shippingPhone ?? ""}
           amount={order.total.toNumber()}
         />
       </div>

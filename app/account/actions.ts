@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentTenantOrThrow } from "@/lib/session";
@@ -15,32 +15,19 @@ export async function customerSignup(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
-  if (!name || !email || !password) {
-    return { error: "Name, email, and password are required" };
-  }
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters" };
-  }
-  if (password !== confirmPassword) {
-    return { error: "Passwords do not match" };
-  }
+  if (!name || !email || !password) return { error: "Name, email, and password are required" };
+  if (password.length < 8) return { error: "Password must be at least 8 characters" };
+  if (password !== confirmPassword) return { error: "Passwords do not match" };
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return { error: "Enter a valid email address" };
-  }
+  if (!emailRegex.test(email)) return { error: "Enter a valid email address" };
 
-  // Email is unique per tenant (a customer of PrintCare and a
-  // customer of ABC Electronics can share the same email address)
   const existing = await prisma.customer.findUnique({
     where: { tenantId_email: { tenantId: tenant.id, email } },
   });
-  if (existing) {
-    return { error: "An account with this email already exists. Try signing in instead." };
-  }
+  if (existing) return { error: "An account with this email already exists. Try signing in instead." };
 
   const hashedPassword = await bcrypt.hash(password, 10);
-
   const customer = await prisma.customer.create({
     data: { tenantId: tenant.id, name, email, phone, password: hashedPassword },
   });
@@ -61,22 +48,16 @@ export async function customerLogin(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) {
-    return { error: "Email and password are required" };
-  }
+  if (!email || !password) return { error: "Email and password are required" };
 
   const customer = await prisma.customer.findUnique({
     where: { tenantId_email: { tenantId: tenant.id, email } },
   });
 
-  if (!customer || !customer.password) {
-    return { error: "Invalid email or password" };
-  }
+  if (!customer || !customer.password) return { error: "Invalid email or password" };
 
   const valid = await bcrypt.compare(password, customer.password);
-  if (!valid) {
-    return { error: "Invalid email or password" };
-  }
+  if (!valid) return { error: "Invalid email or password" };
 
   await createCustomerSession({
     customerId: customer.id,

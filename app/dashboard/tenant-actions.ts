@@ -14,7 +14,7 @@ export async function setViewAsTenant(tenantId: string) {
 
   // Verify the tenant exists before setting the cookie
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!tenant) return { error: "Tenant not found" };
+  if (!tenant) return;
 
   cookies().set(IMPERSONATION_COOKIE, tenantId, {
     httpOnly: true,
