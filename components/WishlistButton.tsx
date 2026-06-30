@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toggleWishlist } from "@/app/account/wishlist/actions";
+import { toggleWishlist } from "@/app/account/(protected)/wishlist/actions";
 
 export default function WishlistButton({
   productId,
