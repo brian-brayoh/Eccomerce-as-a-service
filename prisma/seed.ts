@@ -1,5 +1,5 @@
 // ============================================================
-// Seed script — creates PrintCare as the first tenant.
+// Seed script — creates BMM Creations as the first tenant.
 //
 // Run with: npx prisma db seed
 // (configure in package.json: "prisma": { "seed": "ts-node prisma/seed.ts" })
@@ -11,31 +11,31 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  // ── 1. Create PrintCare tenant ──────────────────────────
-  const printcare = await prisma.tenant.upsert({
-    where: { slug: "printcare" },
+  // ── 1. Create BMM Creations tenant ──────────────────────────
+  const bmmcreations = await prisma.tenant.upsert({
+    where: { slug: "bmmcreations" },
     update: {},
     create: {
-      name: "PrintCare",
-      slug: "printcare",
+      name: "BMM Creations",
+      slug: "bmmcreations",
       phone: "+254700000000",
-      email: "info@printcare.co.ke",
+      email: "info@bmmcreations.com",
       plan: SubscriptionPlan.BUSINESS,
     },
   });
 
-  console.log(`✅ Tenant created: ${printcare.name} (${printcare.id})`);
+  console.log(`✅ Tenant created: ${bmmcreations.name} (${bmmcreations.id})`);
 
-  // ── 2. Create admin user for PrintCare ──────────────────
+  // ── 2. Create admin user for BMM Creations ──────────────────
   const hashedPassword = await bcrypt.hash("ChangeMe123!", 10);
 
   const admin = await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: printcare.id, email: "admin@printcare.co.ke" } },
+    where: { tenantId_email: { tenantId: bmmcreations.id, email: "admin@bmmcreations.com" } },
     update: {},
     create: {
-      tenantId: printcare.id,
-      name: "PrintCare Admin",
-      email: "admin@printcare.co.ke",
+      tenantId: bmmcreations.id,
+      name: "BMM Creations Admin",
+      email: "admin@bmmcreations.com",
       password: hashedPassword,
       role: UserRole.ADMIN,
     },
@@ -45,13 +45,13 @@ async function main() {
 
   // ── 2b. Create platform Super Admin (not tied to one tenant's data,
   //        but must belong to a tenant row due to schema constraints —
-  //        we attach it to PrintCare as a technicality) ────────────
+  //        we attach it to BMM Creations as a technicality) ────────────
   const superAdminPassword = await bcrypt.hash("SuperAdmin123!", 10);
   const superAdmin = await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: printcare.id, email: "owner@yourplatform.com" } },
+    where: { tenantId_email: { tenantId: bmmcreations.id, email: "owner@yourplatform.com" } },
     update: {},
     create: {
-      tenantId: printcare.id,
+      tenantId: bmmcreations.id,
       name: "Platform Owner",
       email: "owner@yourplatform.com",
       password: superAdminPassword,
@@ -63,16 +63,16 @@ async function main() {
 
   // ── 3. Create categories (with one level of nesting) ────
   const printers = await prisma.category.upsert({
-    where: { tenantId_slug: { tenantId: printcare.id, slug: "printers" } },
+    where: { tenantId_slug: { tenantId: bmmcreations.id, slug: "printers" } },
     update: {},
-    create: { tenantId: printcare.id, name: "Printers", slug: "printers" },
+    create: { tenantId: bmmcreations.id, name: "Printers", slug: "printers" },
   });
 
   const laserPrinters = await prisma.category.upsert({
-    where: { tenantId_slug: { tenantId: printcare.id, slug: "laser-printers" } },
+    where: { tenantId_slug: { tenantId: bmmcreations.id, slug: "laser-printers" } },
     update: {},
     create: {
-      tenantId: printcare.id,
+      tenantId: bmmcreations.id,
       name: "Laser Printers",
       slug: "laser-printers",
       parentId: printers.id,
@@ -80,10 +80,10 @@ async function main() {
   });
 
   const inkjetPrinters = await prisma.category.upsert({
-    where: { tenantId_slug: { tenantId: printcare.id, slug: "inkjet-printers" } },
+    where: { tenantId_slug: { tenantId: bmmcreations.id, slug: "inkjet-printers" } },
     update: {},
     create: {
-      tenantId: printcare.id,
+      tenantId: bmmcreations.id,
       name: "Inkjet Printers",
       slug: "inkjet-printers",
       parentId: printers.id,
@@ -91,16 +91,16 @@ async function main() {
   });
 
   const accessories = await prisma.category.upsert({
-    where: { tenantId_slug: { tenantId: printcare.id, slug: "accessories" } },
+    where: { tenantId_slug: { tenantId: bmmcreations.id, slug: "accessories" } },
     update: {},
-    create: { tenantId: printcare.id, name: "Accessories", slug: "accessories" },
+    create: { tenantId: bmmcreations.id, name: "Accessories", slug: "accessories" },
   });
 
   await prisma.category.upsert({
-    where: { tenantId_slug: { tenantId: printcare.id, slug: "toners" } },
+    where: { tenantId_slug: { tenantId: bmmcreations.id, slug: "toners" } },
     update: {},
     create: {
-      tenantId: printcare.id,
+      tenantId: bmmcreations.id,
       name: "Toners & Cartridges",
       slug: "toners",
       parentId: accessories.id,
@@ -111,10 +111,10 @@ async function main() {
 
   // ── 4. Create sample products ───────────────────────────
   await prisma.product.upsert({
-    where: { tenantId_slug: { tenantId: printcare.id, slug: "hp-laserjet-pro-mfp-m428fdw" } },
+    where: { tenantId_slug: { tenantId: bmmcreations.id, slug: "hp-laserjet-pro-mfp-m428fdw" } },
     update: {},
     create: {
-      tenantId: printcare.id,
+      tenantId: bmmcreations.id,
       categoryId: laserPrinters.id,
       name: "HP LaserJet Pro MFP M428fdw",
       slug: "hp-laserjet-pro-mfp-m428fdw",
@@ -135,10 +135,10 @@ async function main() {
   });
 
   await prisma.product.upsert({
-    where: { tenantId_slug: { tenantId: printcare.id, slug: "epson-ecotank-l3250" } },
+    where: { tenantId_slug: { tenantId: bmmcreations.id, slug: "epson-ecotank-l3250" } },
     update: {},
     create: {
-      tenantId: printcare.id,
+      tenantId: bmmcreations.id,
       categoryId: inkjetPrinters.id,
       name: "Epson EcoTank L3250",
       slug: "epson-ecotank-l3250",
@@ -162,9 +162,9 @@ async function main() {
   // ── 5. Create a welcome popup ───────────────────────────
   await prisma.popup.create({
     data: {
-      tenantId: printcare.id,
+      tenantId: bmmcreations.id,
       type: "WELCOME",
-      title: "Welcome to PrintCare!",
+      title: "Welcome to BMM Creations!",
       message: "Browse our latest printers and accessories. Chat with us on WhatsApp for instant help.",
       buttonText: "Shop Now",
       buttonLink: "/products",

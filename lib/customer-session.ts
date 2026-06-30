@@ -68,7 +68,7 @@ export async function getCustomerSession(): Promise<CustomerSessionPayload | nul
  * ONLY if it belongs to the tenant resolved from the current
  * hostname. This is the same cross-tenant safety check used for
  * staff sessions in requireTenantSession() — a customer logged
- * into PrintCare's subdomain should never see ABC Electronics'
+ * into BMM Creations's subdomain should never see ABC Electronics'
  * account data even if their session cookie is somehow still set.
  */
 export async function getCurrentCustomer() {

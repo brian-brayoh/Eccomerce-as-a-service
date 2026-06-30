@@ -77,7 +77,7 @@ export const IMPERSONATION_COOKIE = "pc_view_as_tenant";
  *  - SUPER_ADMIN: if the `pc_view_as_tenant` cookie is set to a valid
  *    tenant ID, that tenant's data is shown (the "View as Tenant"
  *    switcher). Otherwise falls back to the tenant resolved from the
- *    current hostname (so visiting printcare.localhost still works).
+ *    current hostname (so visiting bmmcreations.localhost still works).
  *  - ADMIN / STAFF: MUST match session.user.tenantId === tenant
  *    resolved from the current hostname. A user could theoretically
  *    have a valid session cookie for Tenant A but visit Tenant B's

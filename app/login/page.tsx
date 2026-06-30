@@ -18,7 +18,7 @@ export default async function LoginPage({
             </div>
           </div>
           <h1 className="text-2xl font-semibold text-gray-900">
-            {tenant?.name ?? "PrintCare Commerce"}
+            {tenant?.name ?? "BMM Creations"}
           </h1>
           <p className="mt-1 text-sm text-gray-500">Sign in to your dashboard</p>
         </div>

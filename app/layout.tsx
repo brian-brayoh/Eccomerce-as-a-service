@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "PrintCare Commerce",
+  title: "BMM Creations",
   description: "Multi-tenant commerce platform",
 };
 

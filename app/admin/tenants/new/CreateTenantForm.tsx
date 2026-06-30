@@ -40,7 +40,7 @@ export default function CreateTenantForm() {
           name="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="PrintCare Kenya"
+          placeholder="BMM Creations Kenya"
           required
         />
       </div>
@@ -64,7 +64,7 @@ export default function CreateTenantForm() {
             <input
               type="text"
               name="customDomain"
-              placeholder="printcare.co.ke"
+              placeholder="bmmcreations.com"
               className="font-mono"
             />
             <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
@@ -108,7 +108,7 @@ export default function CreateTenantForm() {
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400">Admin email</label>
-            <input type="email" name="adminEmail" placeholder="admin@printcare.co.ke" required />
+            <input type="email" name="adminEmail" placeholder="admin@bmmcreations.com" required />
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400">Temporary password</label>

@@ -37,7 +37,7 @@ export default function LoginForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@printcare.co.ke"
+          placeholder="admin@bmmcreations.com"
           required
         />
       </div>
